@@ -14,7 +14,9 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 const __dirname = path.resolve();
 
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:5173/']
+const allowedOrigins = process.env.NODE_ENV === "development"
+    ? ['http://localhost:5173', 'http://localhost:5173/']
+    : ["https://fullstack-chat-app-99xq.onrender.com", "https://fullstack-chat-app-99xq.onrender.com/"];
 const corsOptionsDelegate = function (req, callback) {
     const origin = req.header('Origin') || req.header('origin');
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
