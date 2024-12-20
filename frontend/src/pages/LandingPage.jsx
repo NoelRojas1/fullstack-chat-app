@@ -4,7 +4,7 @@ import ChatAppImage from "../assets/images/chat-app.png";
 const Hero = () => {
     return (
         <section id="hero" className="relative bg-gradient-to-r from-primary via-accent to-secondary opacity-80 py-20">
-            <div className="container mx-auto flex items-center justify-between px-6 lg:px-0">
+            <div className="container mx-auto flex flex-wrap items-center justify-between px-6 lg:px-0">
                 {/* Left content */}
                 <div className="w-full lg:w-1/2 text-center lg:text-left">
                     <h1 className="text-5xl font-semibold text-base-content mb-4">
