@@ -40,16 +40,16 @@ const Features = () => {
             <div className="container mx-auto text-center">
                 <h2 className="text-4xl font-semibold text-base-content">Why PingMe?</h2>
                 <p className="mt-4 text-lg text-base-content">Discover the best chat experience ever.</p>
-                <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-12">
-                    <div className="bg-base-100 p-8 rounded-xl shadow-lg">
+                <div className="mt-10 grid place-items-center grid-cols-1 md:grid-cols-3 gap-12">
+                    <div className="bg-base-100 p-8 rounded-xl shadow-lg w-[80%] sm:w-full">
                         <h3 className="text-2xl font-semibold text-primary">Real-time Messaging</h3>
                         <p className="mt-4 text-base-content">Experience instant communication with no delays. Stay connected with friends and colleagues.</p>
                     </div>
-                    <div className="bg-base-100 p-8 rounded-xl shadow-lg">
+                    <div className="bg-base-100 p-8 rounded-xl shadow-lg w-[80%] sm:w-full">
                         <h3 className="text-2xl font-semibold text-primary">Secure & Private</h3>
                         <p className="mt-4 text-base-content">Your privacy is our priority. End-to-end encryption ensures your conversations stay secure.</p>
                     </div>
-                    <div className="bg-base-100 p-8 rounded-xl shadow-lg">
+                    <div className="bg-base-100 p-8 rounded-xl shadow-lg w-[80%] sm:w-full">
                         <h3 className="text-2xl font-semibold text-primary">Group Chats</h3>
                         <p className="mt-4 text-base-content">Create group chats and stay connected with multiple people at once. Perfect for teams and friends.</p>
                     </div>
