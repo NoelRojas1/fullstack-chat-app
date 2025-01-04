@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/user.model.js';
-import {generateToken} from "../lib/utils.js";
+import {decodeLinkId, encodeObjectId, generateToken, isValidLinkId} from "../lib/utils.js";
+import {sendEmailVerificationEmail} from "../clients/mailer.js";
 
 export const signup = async (req, res) => {
     const { email, password, fullName } = req.body;
@@ -22,17 +23,20 @@ export const signup = async (req, res) => {
         });
 
         if(newUser) {
-            generateToken(newUser._id, res);
+            // generateToken(newUser._id, res);
             await newUser.save();
+            await sendEmailVerificationEmail(newUser.email, newUser.fullName, encodeObjectId(newUser._id.toString()));
             return res.status(201).json({
                 _id: newUser._id,
                 fullName: newUser.fullName,
                 email: newUser.email,
                 profilePic: newUser.profilePic,
+                verified: newUser.verified,
             });
         }
         return res.status(400).json({ message: "Invalid user data" });
     } catch(error) {
+        console.log("Error ", error);
         res.status(500).json({error: error.message});
     }
 }
@@ -56,7 +60,8 @@ export const login = async (req, res) => {
             _id: user._id,
             fullName: user.fullName,
             email: user.email,
-            profilePic: user.profilePic
+            profilePic: user.profilePic,
+            verified: user.verified,
         });
     } catch (error) {
        return res.status(500).json({error: error.message});
@@ -77,4 +82,35 @@ export const checkAuth = async (req, res) => {
         console.log("Error checking auth", error);
         return res.status(500).json({error: "Internal Server Error"});
     }
+}
+
+export const verifyEmail = async (req, res) => {
+    try {
+        const { linkId } = req.query;
+        if(!linkId || !isValidLinkId(linkId)) {
+            return res.status(400).json({ message: 'Your email address could not be verified' });
+        }
+
+        const userId = decodeLinkId(linkId);
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { verified: true },
+            {new: true}
+        ).select("-password");
+
+        if(!updatedUser) return res.status(404).json({ message: 'User not found' });
+
+        generateToken(updatedUser._id, res);
+        return res.status(201).json({
+            _id: updatedUser._id,
+            fullName: updatedUser.fullName,
+            email: updatedUser.email,
+            profilePic: updatedUser.profilePic,
+            verified: updatedUser.verified,
+        });
+    } catch(error) {
+        console.log("Error verifying email", error);
+        return res.status(500).json({error: "Internal Server Error"});
+    }
+
 }

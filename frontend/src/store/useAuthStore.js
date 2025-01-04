@@ -14,6 +14,9 @@ export const useAuthStore = create((set, get) => {
         isCheckingAuth: true,
         onlineUsers: [],
         socket: null,
+        isVerifyingEmail: false,
+
+
 
 
         checkAuth: async () => {
@@ -52,6 +55,20 @@ export const useAuthStore = create((set, get) => {
                 toast.error(error.response.data.message);
             } finally {
                 set({isLoggingIn: false});
+            }
+        },
+        verifyEmail: async (data) => {
+            set({isVerifyingEmail: true});
+
+            try {
+                const response = await axiosInstance.get(`/auth/verify?linkId=${data}`);
+                set({authUser: response.data});
+                toast.success("Email verified");
+                get().connectToSocket();
+            } catch (error) {
+                toast.error(error.response.data.message);
+            } finally {
+                set({isVerifyingEmail: false});
             }
         },
         logout: async () => {

@@ -10,11 +10,14 @@ import SignUpPage from "./pages/SignUpPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
+import VerifyEmailNotificationPage from "./pages/VerifyEmailNotificationPage.jsx";
 import {useAuthStore} from "./store/useAuthStore.js";
 import {useThemeStore} from "./store/useThemeStore.js";
 
-
-
+const ProtectedHomePage = withAuth(HomePage, "/verify-notification");
+const ProtectedProfilePage = withAuth(ProfilePage, "/login");
+const LandingPageWithAuthRedirect = withRedirection(LandingPage, "/chat");
 
 function App() {
      const { theme } = useThemeStore();
@@ -38,19 +41,43 @@ function App() {
                 <Navbar />
 
                 <Routes>
-                    <Route path="/" element={!authUser ? <LandingPage /> : <Navigate to="/chat" />} />
-                    <Route path="/chat" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
+                    <Route path="/" element={<LandingPageWithAuthRedirect user={authUser} />} />login
+                    <Route path="/chat" element={<ProtectedHomePage user={authUser} />} />
+                    <Route path="/profile" element={<ProtectedProfilePage user={authUser} />} />
                     <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/chat" />} />
                     <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/chat" />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/profile" element={authUser ?  <ProfilePage /> : <Navigate to="/login" />} />
+                    <Route path="/verify" element={<VerifyEmailPage />} />
+                    <Route path="/verify-notification" element={<VerifyEmailNotificationPage />} />
                 </Routes>
-
 
                 <Toaster />
 
           </div>
       )
+}
+
+function withRedirection(Component, to) {
+    return ({user, ...props}) => {
+        if(!user) {
+            return <Component {...props} />
+        }
+        return <Navigate to={to} />
+    }
+}
+
+function withAuth(Component, to) {
+    return ({user, ...props}) => {
+        if(!user) {
+            return <Navigate to="/login" />
+        }
+
+        if(!user.verified) {
+            return <Navigate to={to} />
+        }
+
+        return <Component {...props} />
+    }
 }
 
 export default App
