@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {Image, MessageSquare, Send, X} from "lucide-react";
+import {Image, MessageSquare, Send, X, Mic, Languages} from "lucide-react";
 import {useChatStore} from "../store/useChatStore.js";
 import Sidebar from "../components/Sidebar";
 import {useAuthStore} from "../store/useAuthStore.js";
@@ -88,13 +88,11 @@ function ChatContainer() {
                             <time className="text-sm opacity-50 ml-1">{formatMessageTime(message.createdAt)}</time>
                         </div>
 
-                        <div className="chat-bubble flex flex-col">
+                        <div className="chat-bubble flex flex-col group">
                             {message.image && (
                                 <img src={message.image} alt="attachment" className="sm:max-w-[200px] rounded-md mb-2" />
                             )}
-                            {message.text && (
-                                <p>{message.text}</p>
-                            )}
+                            {message.text && <Message message={message.text} />}
                         </div>
                     </div>
                 ))}
@@ -105,15 +103,55 @@ function ChatContainer() {
     );
 }
 
+function Message({message}) {
+    const [originalMessage] = useState(message);
+    const [translatedMessage, setTranslatedMessage] = useState('');
+
+    const isTranslationSupported = () => {
+        return "translation" in self && "createTranslator" in self.translation;
+    }
+
+    const translateMessage = async (message) => {
+        if(isTranslationSupported()) {
+            // Translation API supported
+            const translator = await window.translation.createTranslator({
+                sourceLanguage: "en",
+                targetLanguage: "es",
+            });
+            return await translator.translate(message);
+        }
+    }
+
+    const handleTranslation = async () => {
+        if (!translatedMessage) {
+            setTranslatedMessage(await translateMessage(originalMessage));
+            return;
+        }
+        setTranslatedMessage("");
+    }
+
+    return (
+        <div>
+            <p>{translatedMessage ? translatedMessage : originalMessage}</p>
+            {isTranslationSupported() && <span
+                onClick={handleTranslation}
+                className="transition-all duration-200 ease-in-out hidden hover:text-base-content
+                           group-hover:inline-block hover:cursor-pointer hover:bg-accent rounded-lg p-2">
+                <Languages />
+            </span>}
+        </div>
+    );
+}
+
 function ChatHeader() {
-    const { selectedUser, setSelectedUser} = useChatStore();
-    const { onlineUsers } = useAuthStore();
+    const {selectedUser, setSelectedUser} = useChatStore();
+    const {onlineUsers} = useAuthStore();
 
     return <div className="p-2.5 border-b border-base-300">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
                 {/* Avatar */}
-                <Avatar user={selectedUser} size={12} />
+                <Avatar user={selectedUser} size={12}/>
 
                 {/* User info */}
                 <div>
@@ -137,6 +175,9 @@ function ChatHeader() {
 function MessageInput() {
     const [text, setText] = useState("");
     const [imagePreview, setImagePreview] = useState("");
+    const [isCopyingAudioInput, setIsCopyingAudioInput] = useState(false);
+    const [isSupportSpeechRecognition, setSupportSpeechRecognition] = useState(false);
+
     const fileInputRef = useRef(null);
     const { sendMessage } = useChatStore();
 
@@ -183,6 +224,83 @@ function MessageInput() {
         }
     }
 
+    const checkMicrophonePermission = async () => {
+        try {
+            // Request microphone access via getUserMedia
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            return true; // Permission granted
+        } catch (error) {
+            // If permission is denied, throw an error
+            return false; // Permission denied
+        }
+    };
+
+    const recognitionRef = useRef(null);
+    const startListening = async () => {
+        const hasPermission = await checkMicrophonePermission();
+        if (!hasPermission) return;
+
+        if(!isSupportSpeechRecognition) {
+            toast.error("SpeechRecognition is not supported in this browser");
+        }
+
+        if(!recognitionRef.current) {
+            recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognitionRef.current.lang = "en-US";
+            recognitionRef.current.interimResults = true;
+            recognitionRef.current.continuous = true;
+
+            recognitionRef.current.onresult = async (event) => {
+                const interimText = Array.from(event.results)
+                    .filter(result => !result.isFinal)
+                    .map(result => result[0].transcript)
+                    .join(" ");
+
+                const finalText = Array.from(event.results)
+                    .filter(result => result.isFinal)
+                    .map(result => result[0].transcript)
+                    .join(" ");
+
+                setText(interimText || finalText);
+            }
+
+            recognitionRef.current.onerror = (event) => {
+                console.error("Speech Recognition Error", event.error);
+            };
+
+            // recognition.onend = (event) => {
+            //     if(isCopyingAudioInput) recognition.start();
+            // };
+            recognitionRef.current.onend = () => {
+                console.log('Speech recognition ended');
+                setIsCopyingAudioInput(false);
+                recognitionRef.current = null;
+            };
+
+            recognitionRef.current.start();
+            setIsCopyingAudioInput(true);
+        }
+    }
+
+    const stopListening = () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+        }
+        setIsCopyingAudioInput(false);
+    };
+
+    const autoResize = (event) => {
+        event.target.style.height = 'auto'; // Reset the height to auto
+        event.target.style.height = `${event.target.scrollHeight}px`; // Set the height to fit content
+    };
+
+    useEffect(() => {
+        if("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
+            setSupportSpeechRecognition(true);
+        }
+    }, [])
+
     return (
         <div className="p-4 w-full">
             {imagePreview && (
@@ -206,13 +324,27 @@ function MessageInput() {
             >
                 <div className="flex-1 flex gap-2">
                     {/*Text message*/}
-                    <input
-                        type="text"
+                    <textarea
+                        // type="text"
                         value={text}
-                        className="w-full input input-bordered rounded-lg input-sm sm:input-md"
+                        className="w-full input input-bordered rounded-lg input-sm sm:input-md resize-none leading-relaxed"
                         placeholder="Type a message..."
+                        onInput={autoResize}
                         onChange={(e) => setText(e.target.value)}
                     />
+
+                    {/* Audio input to text only show if browser supports SpeechRecognition API */}
+                    {
+                        isSupportSpeechRecognition && (
+                            <button
+                                type="button"
+                                className={`hidden sm:flex btn btn-circle`}
+                                onClick={!isCopyingAudioInput ? startListening : stopListening}
+                            >
+                                <Mic size={20}/>
+                            </button>
+                        )
+                    }
 
                     {/*Image input*/}
                     <input
@@ -229,16 +361,16 @@ function MessageInput() {
                     >
                         <Image size={20}/>
                     </button>
-                </div>
 
-                {/* Send button */}
-                <button
-                    type="submit"
-                    className="btn btn-sm btn-circle"
-                    disabled={!text.trim() && !imagePreview}
-                >
-                    <Send size={20}/>
-                </button>
+                    {/* Send button */}
+                    <button
+                        type="submit"
+                        className="sm:flex btn btn-circle"
+                        disabled={!text.trim() && !imagePreview}
+                    >
+                        <Send size={20}/>
+                    </button>
+                </div>
             </form>
         </div>
     );
